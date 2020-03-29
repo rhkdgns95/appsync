@@ -18,7 +18,8 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react",
-    "noUnusedLocals": true
+    "noUnusedLocals": true,
+    "": true
   },
   "include": [
     "src"

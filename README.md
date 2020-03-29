@@ -3,7 +3,8 @@
 
 ## Todo
 - [x] AWS appsync setup with amplify
-
+- [x] Using Formik, GraphQL Mutation with Apollo and AppSync Client
+- [ ] Querying AppSync and Using Css Grid
 
 ## Install
 - npm install -g @aws-amplify/cli
@@ -20,6 +21,8 @@
 > * 2. Rehydrated가 Aws의 AppSync에 Client가 연결이 될 때까지 앱의 렌더링을 기다려야하지만, react-apollo의 3.x이상부터 에러가 발생하여, 방법으로는 다음 두가지 Rehydrated의 커스텀하게 사용하는 방법 또는 2.5.8로 버전을 낮추는 방법중 react-apollo를 최신버전으로 사용하고 Rehydrated를 컴포넌트가 렌더링 된 이후에 App을 Wrapper하는 방법으로 사용하기.
 > * [참고1](https://github.com/aws-samples/aws-serverless-appsync-app/issues/8)
 > * [참고2](https://github.com/awslabs/aws-mobile-appsync-sdk-js/issues/448)
+- Chrome Secret Mode Not working.
+
 
 ## Study
 - 1. tsconfig 
@@ -27,6 +30,9 @@
 >> (ES5의 기본값: [dom, es5, scripthost], ES6의 기본값: [dom, dom.iterable, es6, scripthost])
 >> 예를들어, ES6의 Promise를 사용하려면, es2015.promise라는 라이브러리를 정의하여 인젝션 해주도록 해야함.
 > 2) skipLibCheck: true // 모든 선언파일의 (*.d.ts)의 유형검사를 건너띌지 여부
+> 3) > react-hooks의 Query사용
+>> useMutation은 동작되지만, useQuery가 에러가 발생함.
+>> 그래서 해결책으로 useApolloClient()를 통해 client객체를 직접 호출하여 데이터에 접근하였더니 동작함.
 
 ## Amplify CLI [문서](https://aws-amplify.github.io/docs/cli-toolchain/quickstart?sdk=js)
 - amplify add api 
