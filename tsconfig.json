@@ -19,7 +19,6 @@
     "noEmit": true,
     "jsx": "react",
     "noUnusedLocals": true,
-    "": true
   },
   "include": [
     "src"

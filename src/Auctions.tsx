@@ -1,33 +1,43 @@
 import React from 'react';
 import { listAuctions } from './graphql/queries';
-import { useApolloClient } from 'react-apollo';
-import { gql } from 'apollo-boost';
-import { ListAuctionsQuery, ListAuctionsQueryVariables } from './API';
 import AuctionCard from './AuctionCard';
-
+import { Query } from 'react-apollo';
+import { gql } from 'apollo-boost';
+import {ListAuctionsQuery, ListAuctionsQueryVariables} from "./API";
+import { OnMount } from './components/OnMount';
+import { buildSubscription } from 'aws-appsync';
+import { onCreateAuction } from './graphql/subscriptions';
 
 const Auctions = () => {
-    const client = useApolloClient();
-    
-    const data = client.readQuery<ListAuctionsQuery, ListAuctionsQueryVariables>({ query: gql(listAuctions) });
-
-    console.log("DATA: ", data);
-    
     return (
-        <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gridGap: 10,
-        }}>
+        <Query<ListAuctionsQuery, ListAuctionsQueryVariables> 
+            query={gql(listAuctions)}
+            variables={{ limit: 100 }}
+        >
             {
-                data?.listAuctions?.items?.map(item => 
-                    <AuctionCard 
-                        key={item!.id} 
-                        { ...item! }
-                    />
+                ({ data, subscribeToMore }) => (
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gridGap: 10,
+                    }}>
+                    <OnMount onEffect={() => {
+                        const subscriptionQuery = gql(onCreateAuction);
+                        const cacheUpdateQuery = gql(listAuctions);
+                        return subscribeToMore(buildSubscription(subscriptionQuery, cacheUpdateQuery));
+                    }}/>
+                    {
+                        data && data?.listAuctions?.items?.map((item: any) => 
+                            <AuctionCard 
+                                key={item!.id} 
+                                { ...item! }
+                            />
+                        )
+                    }
+                    </div>
                 )
             }
-        </div>
+        </Query>
     );
 };
 
