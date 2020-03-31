@@ -6,13 +6,11 @@ export type CreateAuctionInput = {
   id?: string | null,
   name: string,
   price: number,
-  title?: string | null,
 };
 
 export type ModelAuctionConditionInput = {
   name?: ModelStringInput | null,
   price?: ModelFloatInput | null,
-  title?: ModelStringInput | null,
   and?: Array< ModelAuctionConditionInput | null > | null,
   or?: Array< ModelAuctionConditionInput | null > | null,
   not?: ModelAuctionConditionInput | null,
@@ -74,7 +72,6 @@ export type UpdateAuctionInput = {
   id: string,
   name?: string | null,
   price?: number | null,
-  title?: string | null,
 };
 
 export type DeleteAuctionInput = {
@@ -85,7 +82,6 @@ export type ModelAuctionFilterInput = {
   id?: ModelIDInput | null,
   name?: ModelStringInput | null,
   price?: ModelFloatInput | null,
-  title?: ModelStringInput | null,
   and?: Array< ModelAuctionFilterInput | null > | null,
   or?: Array< ModelAuctionFilterInput | null > | null,
   not?: ModelAuctionFilterInput | null,
@@ -118,7 +114,7 @@ export type CreateAuctionMutation = {
     id: string,
     name: string,
     price: number,
-    title: string | null,
+    owner: string | null,
   } | null,
 };
 
@@ -133,7 +129,7 @@ export type UpdateAuctionMutation = {
     id: string,
     name: string,
     price: number,
-    title: string | null,
+    owner: string | null,
   } | null,
 };
 
@@ -148,7 +144,7 @@ export type DeleteAuctionMutation = {
     id: string,
     name: string,
     price: number,
-    title: string | null,
+    owner: string | null,
   } | null,
 };
 
@@ -162,7 +158,7 @@ export type GetAuctionQuery = {
     id: string,
     name: string,
     price: number,
-    title: string | null,
+    owner: string | null,
   } | null,
 };
 
@@ -180,10 +176,14 @@ export type ListAuctionsQuery = {
       id: string,
       name: string,
       price: number,
-      title: string | null,
+      owner: string | null,
     } | null > | null,
     nextToken: string | null,
   } | null,
+};
+
+export type OnCreateAuctionSubscriptionVariables = {
+  owner: string,
 };
 
 export type OnCreateAuctionSubscription = {
@@ -192,8 +192,12 @@ export type OnCreateAuctionSubscription = {
     id: string,
     name: string,
     price: number,
-    title: string | null,
+    owner: string | null,
   } | null,
+};
+
+export type OnUpdateAuctionSubscriptionVariables = {
+  owner: string,
 };
 
 export type OnUpdateAuctionSubscription = {
@@ -202,8 +206,12 @@ export type OnUpdateAuctionSubscription = {
     id: string,
     name: string,
     price: number,
-    title: string | null,
+    owner: string | null,
   } | null,
+};
+
+export type OnDeleteAuctionSubscriptionVariables = {
+  owner: string,
 };
 
 export type OnDeleteAuctionSubscription = {
@@ -212,6 +220,6 @@ export type OnDeleteAuctionSubscription = {
     id: string,
     name: string,
     price: number,
-    title: string | null,
+    owner: string | null,
   } | null,
 };

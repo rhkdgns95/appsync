@@ -1,20 +1,26 @@
 {
 	"api": {
-		"Auction": {
+		"AuthAuction": {
 			"service": "AppSync",
 			"providerPlugin": "awscloudformation",
 			"output": {
 				"authConfig": {
 					"additionalAuthenticationProviders": [],
 					"defaultAuthentication": {
-						"authenticationType": "API_KEY",
-						"apiKeyConfig": {
-							"description": "",
-							"apiKeyExpirationDays": 7
+						"authenticationType": "AMAZON_COGNITO_USER_POOLS",
+						"userPoolConfig": {
+							"userPoolId": "authappsync18a8dcb6"
 						}
 					}
 				}
 			}
+		}
+	},
+	"auth": {
+		"appsync18a8dcb6": {
+			"service": "Cognito",
+			"providerPlugin": "awscloudformation",
+			"dependsOn": []
 		}
 	}
 }

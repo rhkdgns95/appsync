@@ -3,32 +3,32 @@
 // this is an auto generated file. This will be overwritten
 
 export const onCreateAuction = /* GraphQL */ `
-  subscription OnCreateAuction {
-    onCreateAuction {
+  subscription OnCreateAuction($owner: String!) {
+    onCreateAuction(owner: $owner) {
       id
       name
       price
-      title
+      owner
     }
   }
 `;
 export const onUpdateAuction = /* GraphQL */ `
-  subscription OnUpdateAuction {
-    onUpdateAuction {
+  subscription OnUpdateAuction($owner: String!) {
+    onUpdateAuction(owner: $owner) {
       id
       name
       price
-      title
+      owner
     }
   }
 `;
 export const onDeleteAuction = /* GraphQL */ `
-  subscription OnDeleteAuction {
-    onDeleteAuction {
+  subscription OnDeleteAuction($owner: String!) {
+    onDeleteAuction(owner: $owner) {
       id
       name
       price
-      title
+      owner
     }
   }
 `;

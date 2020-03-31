@@ -10,7 +10,7 @@ import Typography from '@material-ui/core/Typography';
 interface IProps {
     name: string;
     price: number;
-    title?: string | null;
+    title?: string | null; 
 }
 
 const useStyles = makeStyles({

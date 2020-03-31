@@ -5,6 +5,7 @@
 - [x] AWS appsync setup with amplify
 - [x] Using Formik, GraphQL Mutation with Apollo and AppSync Client
 - [x] Querying AppSync and Using Css Grid + Subscription
+- [x] AppSync Authentication with Cognito User Pools
 
 ## Install
 - npm install -g @aws-amplify/cli
@@ -14,6 +15,7 @@
 - yarn add formik
 - yarn add apollo-boost
 - yarn add immer
+- yarn add aws-amplify-react aws-amplify
 
 ## Bugs
 - yarn upgrade react-apollo@2.5.8 
@@ -31,13 +33,15 @@
 >> (ES5의 기본값: [dom, es5, scripthost], ES6의 기본값: [dom, dom.iterable, es6, scripthost])
 >> 예를들어, ES6의 Promise를 사용하려면, es2015.promise라는 라이브러리를 정의하여 인젝션 해주도록 해야함.
 > 2) skipLibCheck: true // 모든 선언파일의 (*.d.ts)의 유형검사를 건너띌지 여부
-> 3) > react-hooks의 Query사용
+> 3) react-hooks의 Query사용
 >> useMutation은 동작되지만, useQuery가 에러가 발생함.
 >> 그래서 해결책으로 useApolloClient()를 통해 client객체를 직접 호출하여 데이터에 접근하였더니 동작함.
 >> 하지만 다시 에러가 발생함. 
 >> 예를들어, const data = client.readQuery({ query: MeQuery });로 사용시, 맨 처음 호출된 경우라면(맨 처음의 캐시는 비어있는 상태라고 가정) client에서 쿼리를 읽어오려고 하지만 ROOTE_QUERY는 정의되지 않아서 readQuery undefined가 됨.
 >> 그러므로 읽으려는 쿼리가(readQuery) 캐시에 없다면, 오류가 발생함. 그래서 항상 readQuery나 readFragment는 try ~ catch로 예외처리를 할 수 있도록 해주어야 함.
 >> [참고](https://github.com/apollographql/react-apollo/issues/1776) 
+> 4) [Cognito User Pools Auth](https://aws-amplify.github.io/docs/js/api)
+>> 회원가입, 로그인시 자주사용하는 서비스(인증)
 
 ## Amplify CLI [문서](https://aws-amplify.github.io/docs/cli-toolchain/quickstart?sdk=js)
 - amplify add api 
@@ -53,3 +57,6 @@
 - amplify add codegen --API_KEY
 > 정의한 Schema를 바탕으로 GraphQL의 API를 생성해줌.
 > 참고: https://github.com/aws-amplify/amplify-cli/issues/553
+
+## Etc
+- Congnito-id: amhkyhlzsklacloxgx@ttirv.com

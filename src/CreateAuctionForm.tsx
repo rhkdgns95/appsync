@@ -11,7 +11,6 @@ import { listAuctions } from './graphql/queries';
 interface IFormValue {
     name: string;
     price: number;
-    title: string | null;
 }
 
 export const CreateAuctionForm = () => {
@@ -31,7 +30,6 @@ export const CreateAuctionForm = () => {
                         initialValues={{
                             name: "",
                             price: 0,
-                            title: ""
                         }}
                         
                         onSubmit={ async (input, { resetForm }) => {
@@ -68,14 +66,6 @@ export const CreateAuctionForm = () => {
                                         type="number"
                                         label="Price"
                                         value={values.price}
-                                        onChange={handleChange}
-                                        margin="normal"
-                                    />
-                                    <br/>
-                                    <TextField  
-                                        name="title"
-                                        label="Title"
-                                        value={values.title || ""}
                                         onChange={handleChange}
                                         margin="normal"
                                     />

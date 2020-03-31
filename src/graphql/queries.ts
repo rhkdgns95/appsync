@@ -8,7 +8,7 @@ export const getAuction = /* GraphQL */ `
       id
       name
       price
-      title
+      owner
     }
   }
 `;
@@ -23,7 +23,7 @@ export const listAuctions = /* GraphQL */ `
         id
         name
         price
-        title
+        owner
       }
       nextToken
     }

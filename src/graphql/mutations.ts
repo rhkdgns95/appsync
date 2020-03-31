@@ -11,7 +11,7 @@ export const createAuction = /* GraphQL */ `
       id
       name
       price
-      title
+      owner
     }
   }
 `;
@@ -24,7 +24,7 @@ export const updateAuction = /* GraphQL */ `
       id
       name
       price
-      title
+      owner
     }
   }
 `;
@@ -37,7 +37,7 @@ export const deleteAuction = /* GraphQL */ `
       id
       name
       price
-      title
+      owner
     }
   }
 `;
