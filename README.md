@@ -451,6 +451,12 @@ query GetTestPost {
   }
 }
 
+mutation TestUpdatePost {
+  testUpdatePost(id: "9a418941-5c57-4bdc-bde5-dc614d047be8" author:"Updated2 KKH", title:"Updated2 title", content:"Updated2 Content", url:"Update2.com") {
+    ...ItemTestPost
+  }
+}
+
 mutation TestAddPost {
   testAddPost(
     author: "AUTHORNAME"
@@ -472,7 +478,6 @@ fragment ItemTestPost on TestPost {
   downs
   version
 }
-
 ```
 
 ## Etc
