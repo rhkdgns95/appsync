@@ -423,6 +423,15 @@
 - 마지막으로 DynamoDB에는 `expression`에 표시할 수 없는 예약어가 있음.
 - 예를들어, `url은 예약어`이므로 url 필드를 업데이트 하려면 이름 자리 표시자를 사용해서 `expressionNames`필드에 해당 자리표시자를 정의.
 
+6. updatePost 2
+- 이전 updatePost의 두가지 주요한 문제가 있음.
+> - 1) 필드를 하나만 업데이트하고자 하는경우에도 모든 인자값을 업데이트하도록 값을 넣어주어야 함.(업데이트를 원하는 필드만 인자로 넣어서 실행하기.)
+> - 2) 두 사람이 객체를 수정하는 경우 정보가 손실될 수 있음(업데이트 Version관리를 version 필드를 통해서 해결)
+- 이러한 문제를 해결하기 위해서 요청에 지정된 인수만 수정한 다음, UpdateItem 작업에 조건을 추가하도록 updatePost변형을 수정해야함.
+- 먼저 선택한 필드에 한에서만 업데이트 되도록 필수값을 의미하는 ! 표시를 제거하도록 함.
+```
+
+```
 
 
 ## N. Amplify CLI [문서](https://aws-amplify.github.io/docs/cli-toolchain/quickstart?sdk=js)
@@ -442,8 +451,33 @@
 
 
 
+## QnA
+1) AppSync에서 Pipeline Resolver와 Lambda 사용의 차이
+- Pipeline Resolver는 추가비용이 발생하지 않으며, Lambda의 추가홉을 만들 필요가 없으며, 속도가 더 빠름.
+- Lambda는 친숙한 프로그래밍 모델을 제공하며, AppSync에서 VTL로 달성할 수 없는 복잡한 다른작업을 수행 할 수 있음.
+- `즉, 여러 데이터 소스에 엑세스하기 위해서 Pipe line resolver가 반드시 필요한것은 아님(동일한 요청에서 실행될 수 있는 여러 Resolver를 사용하여 여러 데이터 소스를 설정할 수 있음)`
 
-## 재활용
+### Mappting 작성 TIP
+- 문자열에는 ""의 쌍따옴표가 있으며, 문자열에서 변수를 참조하려면 "${}"표시.
+```
+  $set( $firstName = "Jeff" ) 
+  $!(myMapp.put("Firstname", "${firstName}"))
+```
+- 변수를 표현하기 (문자열 안에서 변수를 사용하는 것("${변수명}")과 오직 사용되는 변수만 쓰이는것("$변수명")은 같은의미이지만, 다르게 표현이 될 수 있음.
+```
+#set( $myData = "KKH" )
+
+## 같은의미 ($userName1 == $userName2)
+#set( $userName1 = "${myData}" )    ## "KKH"
+#set( $userName2 = "$myData" )      ## "KKH"
+
+
+## 다른의미 ($userName1 != $userName2)
+#set( $userName1 = "${myData}_OK" ) ## "KKH"
+#set( $userName2 = "$myData_OK" )   ## "$myData_OK"
+```
+
+### 재활용
 ```
 query GetTestPost {
   getTestPost(id: "9a418941-5c57-4bdc-bde5-dc614d047be8") {
@@ -483,9 +517,16 @@ fragment ItemTestPost on TestPost {
 ## Etc
 - [ClientId]: 71ghl2i72iafl2s2e8pokmhbf1
 - Congnito-id: amhkyhlzsklacloxgx@ttirv.com
+- [해석기 문법 Document](http://velocity.apache.org/engine/1.7/user-guide.html#quiet-reference-notation)
+- [파이프라인 이해](https://medium.com/@dabit3/intro-to-aws-appsync-pipeline-functions-3df87ceddac1)
+- [해석기 매핑 템플릿 컨텍스트 참조](https://docs.aws.amazon.com/ko_kr/appsync/latest/devguide/resolver-context-reference.html#dynamodb-helpers-in-util-dynamodb)
 - [DynamoDB 해석기 자습서](https://docs.aws.amazon.com/ko_kr/appsync/latest/devguide/tutorial-dynamodb-resolvers.html)
+- [DynamoDB 해석기 자습서2](https://docs.aws.amazon.com/ko_kr/appsync/latest/devguide/resolver-mapping-template-reference-dynamodb.html#aws-appsync-resolver-mapping-template-reference-dynamodb-condition-expressions)
 - [AppSync이해](https://dev.classmethod.jp/articles/appsync-resolver-vtl-tutorial-ko/)
 - [DynamoDB 해석기](https://docs.aws.amazon.com/ko_kr/appsync/latest/devguide/tutorial-dynamodb-resolvers.html)
 - [Resolver Utils](https://docs.aws.amazon.com/ko_kr/appsync/latest/devguide/resolver-util-reference.html)
 - [$ctx ? $context ?](https://stackoverflow.com/questions/55243969/aws-appsync-ctx-vs-context-in-resolvers)
 - [General Auth](https://docs.aws.amazon.com/ko_kr/cognito/latest/developerguide/cognito-scenarios.html#scenario-aws-and-user-pool)
+- [Using Pipeline Resolver? OR Lambda?](https://stackoverflow.com/questions/59879849/aws-amplify-pipeline-resolvers-vs-lambda-resolvers)
+- [Enhance appsync dynamodb example with multiple table relationships](https://github.com/serverless/serverless-graphql/issues/248)
+- [Pipeline Resolvers](https://github.com/serverless/serverless-graphql/issues/248)
