@@ -429,8 +429,98 @@
 > - 2) 두 사람이 객체를 수정하는 경우 정보가 손실될 수 있음(업데이트 Version관리를 version 필드를 통해서 해결)
 - 이러한 문제를 해결하기 위해서 요청에 지정된 인수만 수정한 다음, UpdateItem 작업에 조건을 추가하도록 updatePost변형을 수정해야함.
 - 먼저 선택한 필드에 한에서만 업데이트 되도록 필수값을 의미하는 ! 표시를 제거하도록 함.
+- 주의(#과 $를 혼동하지 않도록)
 ```
+  {
+    "version" : "2017-02-28",
+    "operation" : "UpdateItem",
+    "key" : {
+      "id" : $util.dynamodb.toDynamoDBJson($context.arguments.input.id)
+    }, 
+    
+    ## expression에 추가/업데이트 Fields는 key, value형태로 제공되어야 함. => {} 사용(key-value)
+    #set( $expNames = {} )
+    #set( $expValues = {} )
+    #set( $expSet = {} )
+    #set( $expAdd = {}  )     
+    #set( $expRemove = [] )   ## Remove 명령은 Field 명만 주어지면 됨. => [] 사용(value)
+    
+    $!{expAdd.put("version", ":one")}
+    $!{expValues.put(":one", { "N" : 1 })}
+    
+    #foreach( $entry in $context.arguments.input.entrySet() )
+      #if( $entry.key != "id" && $entry.key != "expectedVersion" ) ## key != [id, expectedVersion]
+          #if( (!$entry.value) && ("$!{entry.value}" == "") )
+              ## 변경될 값이 NULL 혹은 빈 값인 경우,
+                ## DynamoDB에서는 null 속성은 remove해야 함.
+                #set( $discard = ${expRemove.add("#${entry.key}")} )
+                $!{expNames.put("#${entry.key}", "$entry.key")}
 
+          #else
+              ## 변경될 key값이 존재하는 경우,
+                $!{expSet.put("#${entry.key}", ":${entry.key}")}
+                $!{expNames.put("#${entry.key}", "$entry.key")}
+                $!{expValues.put(":${entry.key}", { "S" : "${entry.value}" })}
+            #end
+        #end
+    #end
+    
+    ##위 작업이 종료되면, expSet에는 { key: #entry.key, value: entry.key }, expRemove에는 속성이 없는 값, expValues에는 업데이트될 {key, value}가 존재함.
+    
+    ## expression settings.
+    #set( $expression = "" )
+    #if( !${expSet.isEmpty()} )
+      #set( $expression = "SET" )
+      #foreach( $entry in $expSet.entrySet() )
+        #set( $expression = "${expression} ${entry.key} = ${entry.value}" )
+        #if( $foreach.hasNext )
+            #set( $expression = "${expression}," )
+        #end
+      #end
+    #end
+    
+    ## version Adding
+    #if( !$expAdd.isEmpty() )
+      #set( $expression = "${expression} ADD " )
+      #foreach( $entry in $expAdd.entrySet() )
+      #set( $expression = "${expression} ${entry.key} ${entry.value}" )
+            #if( $foreach.hasNext )
+              #set( $expression = "${expression}," )
+            #end
+      #end
+    #end
+    
+    ## Remove Fields
+    #if( !$expRemove.isEmpty() )
+      #set( $expression = "${expression} REMOVE" )
+        #foreach( $entry in $expRemove.entrySet() )
+          #set( $expression = "${expression} ${entry}" )
+          #if($foreach.hasNext)
+              #set( $expression = "${expression}," )	
+            #end
+        #end
+    #end
+    
+    ## Update
+    ## #if("$expression" != "") - 업데이트 체크요소가 필요한지 확인해볼것.
+    "update" : {
+      "expression" : "${expression}"
+        #if( !$expNames.isEmpty() )
+          ,"expressionNames" : $util.toJson($expNames)
+        #end
+        #if( !$expValues.isEmpty() )
+          ,"expressionValues" : $util.toJson($expValues)
+        #end
+    },
+    
+    ## Condition
+    "condition" : {
+        "expression"	: "version = :expectedVersion",
+          "expressionValues"	: {
+            ":expectedVersion" : $util.dynamodb.toDynamoDBJson($context.arguments.input.expectedVersion)
+          }
+      }
+    }
 ```
 
 
@@ -475,6 +565,21 @@
 ## 다른의미 ($userName1 != $userName2)
 #set( $userName1 = "${myData}_OK" ) ## "KKH"
 #set( $userName2 = "$myData_OK" )   ## "$myData_OK"
+```
+- 표현식: $!{}
+```
+  ## 1) Map의 put연산 
+  ## 2) Array의 add연산
+  ##  즉, 메소드 사용시 $!{} 형태로 구분하도록 해야함.
+  {
+    ...
+    #set( $data = "MyData" )
+    #set( $myArr = [] )
+    #set( $myMap = {} )
+    
+    $!{myArr.add(6666)}
+    $!{myMap.put("Item", "${data}")}
+  }
 ```
 
 ### 재활용
