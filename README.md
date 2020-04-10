@@ -436,91 +436,94 @@
     "operation" : "UpdateItem",
     "key" : {
       "id" : $util.dynamodb.toDynamoDBJson($context.arguments.input.id)
-    }, 
+    },
+      
+    #set( $expSet = {} )		## Update될 Fields.
+    #set( $expNames = {} )  	## 예약어들.
+    #set( $expValues = {} )		## 값들.
+    #set( $expAdd = {} )		## ADD될 Fields
+    #set( $expRemove = [] )		## REMOVE될 Fields
     
-    ## expression에 추가/업데이트 Fields는 key, value형태로 제공되어야 함. => {} 사용(key-value)
-    #set( $expNames = {} )
-    #set( $expValues = {} )
-    #set( $expSet = {} )
-    #set( $expAdd = {}  )     
-    #set( $expRemove = [] )   ## Remove 명령은 Field 명만 주어지면 됨. => [] 사용(value)
-    
+    ## Added Field.
     $!{expAdd.put("version", ":one")}
     $!{expValues.put(":one", { "N" : 1 })}
     
+    
+    ## Filter 1 { Fields Not "id" && "expectedVersion"}
+    ## Filter 2 { Null / Not Null } 
     #foreach( $entry in $context.arguments.input.entrySet() )
-      #if( $entry.key != "id" && $entry.key != "expectedVersion" ) ## key != [id, expectedVersion]
-          #if( (!$entry.value) && ("$!{entry.value}" == "") )
-              ## 변경될 값이 NULL 혹은 빈 값인 경우,
-                ## DynamoDB에서는 null 속성은 remove해야 함.
-                #set( $discard = ${expRemove.add("#${entry.key}")} )
-                $!{expNames.put("#${entry.key}", "$entry.key")}
-
-          #else
-              ## 변경될 key값이 존재하는 경우,
-                $!{expSet.put("#${entry.key}", ":${entry.key}")}
-                $!{expNames.put("#${entry.key}", "$entry.key")}
-                $!{expValues.put(":${entry.key}", { "S" : "${entry.value}" })}
+      #if( $entry.key != "id" && $entry.key != "expectedVersion" )
+          #if( (!$entry.value) || ("$!{entry.value}" == "") )	## <참고> $$가 아니라 ||으로 변경되어야하지 않나?
+              ## 잘못된 표현
+              ## $!{expRemove.add("#${entry.key}")}   
+                
+                #set( $discard = $expRemove.add("#${entry.key}") )
+              $!{expNames.put("#${entry.key}", $entry.key)}
+            #else
+              $!{expSet.put("#${entry.key}", ":${entry.key}")}
+                $!{expNames.put("#${entry.key}", $entry.key)}  ## <참고> 시도1. "${entry.key}" -> $entry.key로 변경해보기.
+                $!{expValues.put(":${entry.key}", { "S" : "${entry.value}" })} ## <참고> 시도2. "${entry.value}" -> $entry.value / { "S" : "" } -> $util.toJson($entry.value) 두 가지 변경해보기.
             #end
         #end
     #end
     
-    ##위 작업이 종료되면, expSet에는 { key: #entry.key, value: entry.key }, expRemove에는 속성이 없는 값, expValues에는 업데이트될 {key, value}가 존재함.
-    
-    ## expression settings.
+    ## SET 내용들 분리
+    ## Filter 1 { expSet is Not Empty }
     #set( $expression = "" )
-    #if( !${expSet.isEmpty()} )
-      #set( $expression = "SET" )
-      #foreach( $entry in $expSet.entrySet() )
-        #set( $expression = "${expression} ${entry.key} = ${entry.value}" )
-        #if( $foreach.hasNext )
-            #set( $expression = "${expression}," )
-        #end
-      #end
-    #end
-    
-    ## version Adding
-    #if( !$expAdd.isEmpty() )
-      #set( $expression = "${expression} ADD " )
-      #foreach( $entry in $expAdd.entrySet() )
-      #set( $expression = "${expression} ${entry.key} ${entry.value}" )
+    #if( !$expSet.isEmpty() )  ## <참고> 시도. $!{entrySet.isEmpty()}로 변경해보기.
+    #set( $expression = "SET" )
+        #foreach( $entry in $expSet.entrySet() )
+          #set( $expression = "${expression} ${entry.key} = ${entry.value}" )
             #if( $foreach.hasNext )
               #set( $expression = "${expression}," )
             #end
-      #end
+        #end
     #end
     
-    ## Remove Fields
-    #if( !$expRemove.isEmpty() )
-      #set( $expression = "${expression} REMOVE" )
-        #foreach( $entry in $expRemove.entrySet() )
-          #set( $expression = "${expression} ${entry}" )
-          #if($foreach.hasNext)
-              #set( $expression = "${expression}," )	
+    ## ADD 내용들 분리
+    #if( !$expAdd.isEmpty() )
+      #set( $expression = "${expression} ADD" )
+    #foreach( $entry in $expAdd.entrySet() )
+          #set( $expression = "${expression} ${entry.key} ${entry.value}" )
+          #if( $foreach.hasNext )
+              #set( $expression = "${expression}," )
             #end
         #end
     #end
     
-    ## Update
-    ## #if("$expression" != "") - 업데이트 체크요소가 필요한지 확인해볼것.
+    ## REMOVE 내용들 분리
+    #if( !$expRemove.isEmpty() )
+      #set( $expression = "${expression} REMOVE")
+      #foreach( $entry in $expRemove )
+        #set( $expression = "${expression} ${entry}")
+            #if( $foreach.hasNext )
+              #set( $expression = "${expression}," )
+            #end        
+        #end
+    #end
+    
+    ## Expression.
     "update" : {
-      "expression" : "${expression}"
-        #if( !$expNames.isEmpty() )
-          ,"expressionNames" : $util.toJson($expNames)
-        #end
-        #if( !$expValues.isEmpty() )
-          ,"expressionValues" : $util.toJson($expValues)
-        #end
+      "expression" : "$expression"
+      #if( !$expNames.isEmpty() )
+        ,"expressionNames" : $utils.toJson($expNames)
+      #end
+      #if( !$expValues.isEmpty() )
+        ,"expressionValues" : $utils.toJson($expValues)
+      #end
     },
     
-    ## Condition
+    ## Condition.
     "condition" : {
-        "expression"	: "version = :expectedVersion",
-          "expressionValues"	: {
-            ":expectedVersion" : $util.dynamodb.toDynamoDBJson($context.arguments.input.expectedVersion)
-          }
+      "expression" : "#version = :version",
+      "expressionNames" : {
+        "#version" : "version"
+      },
+      "expressionValues" : {
+        ":version" : $util.dynamodb.toDynamoDBJson($context.arguments.input.expectedVersion)
       }
     }
+  }
 ```
 
 
@@ -547,7 +550,7 @@
 - Lambda는 친숙한 프로그래밍 모델을 제공하며, AppSync에서 VTL로 달성할 수 없는 복잡한 다른작업을 수행 할 수 있음.
 - `즉, 여러 데이터 소스에 엑세스하기 위해서 Pipe line resolver가 반드시 필요한것은 아님(동일한 요청에서 실행될 수 있는 여러 Resolver를 사용하여 여러 데이터 소스를 설정할 수 있음)`
 
-### Mappting 작성 TIP
+### Mapping 작성 TIP
 - 문자열에는 ""의 쌍따옴표가 있으며, 문자열에서 변수를 참조하려면 "${}"표시.
 ```
   $set( $firstName = "Jeff" ) 
@@ -581,6 +584,70 @@
     $!{myMap.put("Item", "${data}")}
   }
 ```
+- expression 작성시 주의
+```
+  ## [1]
+  "expression" : $expression,   ## 틀린 표현식
+  ...
+
+  ## [2]
+  "expression" : "${expression}" ## 맞는 표현식
+  
+  * update, condition 등 Table의 데이터와 비교하는 표현식을 작성할때에는 반드시, ""문자열로 표현하도록 해야함.
+```
+- foreach( $item in $items )
+```
+  #set( $myMap = {} )  ## Map
+  #set( $myArray = [] ) ## Array
+  
+  #foreach( $objItem in $myMap.entrySet() )  ## Map명.entrySet()
+
+  #end
+
+  #foreach( $arrItem in $myArray )  ## 단순 Array명
+
+  #end
+```
+- Array 데이터 추가 (#set을 사용하도록)
+```
+  #set( $myArr = [] )
+  #set( $data = "55" )
+
+  $myArr.add($data) # 잘못된 표현
+  #set( $discard = $myArr.add($data)) # 올바른 표현
+```
+- Map 데이터 추가 ($!{} 문법으로 표현)
+```
+  #set( $myMap = {} )
+  #set( $data = "55" )
+
+  $!{myMap.put("KEY", $data)}
+```
+- $ctx.stash
+> - Stash는 각 리졸버와 매핑 템플릿에서 사용할 수 있는 Map이다.
+> - 주로 파이프라인에서 사용되어지며, 앞단에서의 작성되어지면 해당 리졸버와 뒷단과의 데이터를 공유하게 된 셈이다.
+```
+  $util.qr($ctx.stash.put("userId", $ctx.args.filter.id))
+  $util.qr($ctx.stash.put("userName", $ctx.identity.username))
+```
+- #return
+> - #return(data: Object)은 매핑 템플릿에서 조기에 반환하는경우 유용함.
+> - 프로그래밍언어의 return과 비슷하며, 이는 리졸버 매핑 템플릿에서 반환된다는 의미임.
+> - 하지만 주의점으로 파이프로 이루어진 함수들을 건너뛰긴하지만, 파이프라인의 마지막 응답 해석기는 거쳐서 간다는 것을 주의.
+```
+  #if($ctx.stash.callId == "")
+    #return($ctx.prev.result)
+  #else
+    {
+      "operation" : "GetItem",
+      "key" : {
+        "id" : "XXXXXXXX"
+      }
+    }
+  #end
+```
+
+
 
 ### 재활용
 ```
@@ -623,6 +690,7 @@ fragment ItemTestPost on TestPost {
 - [ClientId]: 71ghl2i72iafl2s2e8pokmhbf1
 - Congnito-id: amhkyhlzsklacloxgx@ttirv.com
 - [해석기 문법 Document](http://velocity.apache.org/engine/1.7/user-guide.html#quiet-reference-notation)
+- [권한부여 사용사례](https://docs.aws.amazon.com/ko_kr/appsync/latest/devguide/security-authorization-use-cases.html)
 - [파이프라인 이해](https://medium.com/@dabit3/intro-to-aws-appsync-pipeline-functions-3df87ceddac1)
 - [해석기 매핑 템플릿 컨텍스트 참조](https://docs.aws.amazon.com/ko_kr/appsync/latest/devguide/resolver-context-reference.html#dynamodb-helpers-in-util-dynamodb)
 - [DynamoDB 해석기 자습서](https://docs.aws.amazon.com/ko_kr/appsync/latest/devguide/tutorial-dynamodb-resolvers.html)
@@ -635,3 +703,6 @@ fragment ItemTestPost on TestPost {
 - [Using Pipeline Resolver? OR Lambda?](https://stackoverflow.com/questions/59879849/aws-amplify-pipeline-resolvers-vs-lambda-resolvers)
 - [Enhance appsync dynamodb example with multiple table relationships](https://github.com/serverless/serverless-graphql/issues/248)
 - [Pipeline Resolvers](https://github.com/serverless/serverless-graphql/issues/248)
+- [Amplify DataStore](https://medium.com/open-graphql/create-a-multiuser-graphql-crud-l-app-in-5-minutes-with-the-amplify-datastore-902764f27404)
+- [Amplify Infos](https://awesomeopensource.com/project/dabit3/awesome-aws-amplify)
+- [Amplify 강의1](https://egghead.io/lessons/react-native-create-interact-with-a-serverless-rest-api-with-aws-lambda-from-react)
