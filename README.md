@@ -525,6 +525,109 @@
     }
   }
 ```
+6. upvotePost - 게시물의 [좋아요] 갯수 증가
+```
+  {
+    "version" : "2017-02-28",
+    "operation" : "UpdateItem",
+    "key" : {
+      "id" : $util.dynamodb.toDynamoDBJson($ctx.args.id)
+    },
+    "update" : {
+      ## 주의! ADD로 데이터를 증가시키려면, =을 붙이면 안됨!
+      "expression" : "ADD #ups :plusOne, #version :plusOne",
+      "expressionNames" : {
+        "#ups" : "ups",
+        "#version" : "version"
+      },
+      "expressionValues" : {
+        ":plusOne" : { "N" : 1 }
+      }
+    }
+  }
+```
+
+7. downvotePost - 게시물의 [싫어요] 갯수 증가
+```
+  {
+    "version" : "2017-02-28",
+    "operation" : "UpdateItem",
+    "key" : {
+      "id" : $util.dynamodb.toDynamoDBJson($ctx.args.id)
+    },
+    "update" : {
+      "expression" : "ADD #downs :plusOne, #version :plusOne",
+      "expressionNames" : {
+        "#downs" : "down",
+        "#version" : "version"
+      },
+      "expressionValues" : {
+        ":plusOne" : { "N" : 1 }
+      }
+    }
+  }
+```
+8. deleteTestPost - 게시물의 인자값 expectedVersion이 있는경우만 제거하며, 조건식으로는 version과 값이 같아야함(expectedVersion이 없는경우 임의로 생성한 값 리턴함.)
+```
+  {
+    "version" : "2017-02-28",
+    #if( $ctx.args.containsKey("expectedVersion") )
+      "operation" : "DeleteItem",
+      "key" : {
+        "id" : $util.dynamodb.toDynamoDBJson($ctx.args.id)
+      },
+      "condition" : {
+        "expression" : "#version = :version",
+        "expressionNames" : {
+          "#version" : "version"
+        },
+        "expressionValues" : {
+          ":version" : { "N" : $ctx.args.expectedVersion }
+        }
+      }
+    #else
+      #return ({
+        "id": "ID_NO",
+          "author": "AUTHOR_NO",
+          "title": "TITLE_NO",
+          "content": "Content____",
+          "url": "ORORORORORO",
+          "ups": 6,
+          "downs": 3,
+          "version": 15
+      })
+    #end
+  }
+```
+9. allTestPost
+> - 전체 데이터를 가져오되, listTestPost와 다른점이있음.
+> - 바로 리턴값으로 list도 전체값을 가져오지만, pagination기능이 있는 allTestPost와는 다르게 리턴값(response 매핑)을 주어야함.
+```
+  ## Request mapping
+  {
+    "version" : "2017-02-28",
+    "operation" : "Scan"
+    #if( $ctx.args.count )  #가져올 데이터를 제한.
+      ,"limit" : $util.toJson($ctx.args.count)
+    #end
+    #if( $ctx.args.nextToken )
+      ,"nextToken" : $util.toJson($ctx.args.nextToken)
+    #end
+  }
+  
+  ## Response Mapping
+  {
+    "testPosts" : $util.toJson($ctx.result.items) ## listTestPosts와 다른 리턴값을 작성함.
+    #if( $ctx.result.nextToken )
+      ,"nextToken" : $util.toJson($ctx.args.nextToken)
+    #end
+  }
+```
+10. allTestPost(2) - Filter를 활용.
+> - 
+
+```
+```
 
 
 ## N. Amplify CLI [문서](https://aws-amplify.github.io/docs/cli-toolchain/quickstart?sdk=js)
@@ -613,7 +716,7 @@
   #set( $myArr = [] )
   #set( $data = "55" )
 
-  $myArr.add($data) # 잘못된 표현
+  $myArr.add($data) # 잘못된 표현(직접적으로 .add()를 호출하면 에러가 발생)
   #set( $discard = $myArr.add($data)) # 올바른 표현
 ```
 - Map 데이터 추가 ($!{} 문법으로 표현)
@@ -646,7 +749,17 @@
     }
   #end
 ```
+- attribute_not_exists(id) / attribute_exists(id)
+> - attribute_exists : 조건식 '해당 속성이 존재한다면'
+> - attribute_not_exists : 조건식 '해당 속성이 존재하지 않는다면'
 
+- containsKey()
+> - 인자에 null값이 있을 수 있다. 이때, null인지 아닌지 확인하기 위한 방법.
+```
+  #if( $ctx.args.containsKey("expectedVersion") )  ## 주의점으로 ""로 문자열형태로 만들어 줄 것.
+    ## IF TRUE
+  #end
+```
 
 
 ### 재활용
@@ -706,3 +819,4 @@ fragment ItemTestPost on TestPost {
 - [Amplify DataStore](https://medium.com/open-graphql/create-a-multiuser-graphql-crud-l-app-in-5-minutes-with-the-amplify-datastore-902764f27404)
 - [Amplify Infos](https://awesomeopensource.com/project/dabit3/awesome-aws-amplify)
 - [Amplify 강의1](https://egghead.io/lessons/react-native-create-interact-with-a-serverless-rest-api-with-aws-lambda-from-react)
+- [DynamoDB 조건식](https://docs.aws.amazon.com/ko_kr/amazondynamodb/latest/developerguide/Expressions.OperatorsAndFunctions.html#Expressions.OperatorsAndFunctions.Syntax)
