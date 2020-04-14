@@ -619,15 +619,130 @@
   {
     "testPosts" : $util.toJson($ctx.result.items) ## listTestPosts와 다른 리턴값을 작성함.
     #if( $ctx.result.nextToken )
-      ,"nextToken" : $util.toJson($ctx.args.nextToken)
+      ,"nextToken" : $util.toJson($ctx.result.nextToken)
     #end
   }
 ```
 10. allTestPost(2) - Filter를 활용.
-> - 
+> - 옵션 filter와 limit을 함께 사용하면,
+> - limit을 먼저 실행 한 다음, filter가 실행됨.
+> - 즉, limit: 3이면, 가져온 3개중 filter가 실행이 됨.
+```
+  {
+    "version" : "2017-02-28",
+    "operation" : "Scan"
 
+    #set( $expSet = {} )
+    #set( $expNames = {} )
+    #set( $expValues = {} )
+    #if( !$ctx.args.filter.isEmpty() )
+      #foreach( $entry in $ctx.args.filter.entrySet() )
+          #if( ($entry.value) && ("${entry.value}" != "") )
+              $!{expSet.put("#${entry.key}", ":${entry.key}")}
+                $!{expNames.put("#${entry.key}", "${entry.key}")}
+                $!{expValues.put(":${entry.key}", { "S" : "${entry.value}"} )}
+            #end
+      #end
+    #end
+    
+    #set( $expression = "" )
+    #if( !$expSet.isEmpty() )
+      #foreach( $entry in $expSet.entrySet() )
+          #set( $expression = "${expression} ${entry.key} = ${entry.value}" )
+          #if( $foreach.hasNext )
+            ## AND 혹은 OR을 통해서 조건 ( OR, AND 중 택 1 )
+            #set( $expression = "${expression} AND " )
+          #end
+      #end
+    #end
+    
+    #if( $expression != "" )
+      ,"filter": {
+          "expression" : "${expression}"
+          #if( !$expNames.isEmpty() )
+              ,"expressionNames" : $util.toJson($expNames)
+          #end
+          #if( !$expValues.isEmpty() )
+              ,"expressionValues" : $util.toJson($expValues)
+          #end
+      }
+    #end
+    #if( $ctx.args.count )
+      ,"limit": $util.toJson($ctx.args.count)
+    #end
+  }
 ```
+- 11. allTestPostsByTags
+> - 필터링 옵션: contains(필드명, 필드값)
 ```
+  ## 요청 맵핑
+  {
+    "version" : "2017-02-28",
+    "operation" : "Scan",
+    "filter" : {
+      "expression" : "contains (tags, :tag)",
+      "expressionValues" : {
+        ":tag" : $util.dynamodb.toDynamoDBJson($ctx.args.tag)
+      }
+    }
+    #if( $ctx.args.count )
+      ,"limit" : $util.toJson($ctx.args.count)
+    #end
+    #if( $ctx.args.nextToken )
+      ,"nextToken" : $util.toJson($ctx.args.nextToken)
+    #end
+  }
+
+  ## 응답 맵핑
+  {
+    "testPosts" : $util.toJson($ctx.result.items)
+    #if($ctx.result.nextToken)
+      ,"nextToken" : $util.toJson($ctx.result.nextToken)
+    #end
+  }
+```
+- 12. addTag
+> - testPost에 `tags: [String!]` 항목 추가.
+> - arguments: id, tag값
+```
+  ## Request
+  {
+    "version" : "2017-02-28",
+    "operation" : "UpdateItem",
+    "key" : {
+      "id" : $util.dynamodb.toDynamoDBJson($ctx.args.id)
+    },
+    "update" : {
+      "expression" : "ADD tags :tag, version :plusOne",
+      "expressionValues" : {
+        ":tag" : { "SS" : [ $util.toJson($ctx.args.tag) ] },
+        ":plusOne" : { "N" : 1 }
+      }
+    }
+  }
+  ## Response
+  $util.toJson($ctx.result)
+```
+- 13. removeTag
+```
+  ## Request
+  {
+    "version" : "2017-02-28",
+    "operation" : "UpdateItem",
+    "update" : {
+      "expression" : "DELETE tags :tag ADD version :plusOne",
+      "expressionValues" : {
+        ":tag" : { "SS" : [ $util.toJson($ctx.args.tag) ] },
+        ":plusOne" : { "N" : 1 }
+      }
+    }
+  }
+
+  ## Response
+  $util.toJson($ctx.result)
+```
+- 14. 목록 및 맵 사용.
+
 
 
 ## N. Amplify CLI [문서](https://aws-amplify.github.io/docs/cli-toolchain/quickstart?sdk=js)
@@ -760,7 +875,30 @@
     ## IF TRUE
   #end
 ```
+- GlobalSecondaryIndex (GSI)
+> - 기본키 이외에 키값으로 검색을 할 수 있음.
+> - (1)하나의 파티션키와 (2)정렬키로 식별됨.
+- $util의 유틸리티 헬퍼
+> - $util변수에는 데이터를 쉽게 사용할 수 있도록 하는 일반적인 유틸리니 메서드가 포함되어 있음.
+> - 지정된 것을 사용하지 않는 이상 모든 유틸리티는 UTF-8문자 집합을 사용함.
+> - ex) util.qr()
+```
+  ## 실행시 반환된 값을 제한하면서, VTL문을 실행함.
+  #set( $myMap = {} )
+  ## Before
+  #set( $discard = $myMap.put("id", "first value") )
+  
+  ## After
+  $!{myMap.put("id", "first value")} ## 방법 1
+  $util.qr($myMap.put("id", "first value")) ## 방법 2
 
+- (Scan)스캔에 대한 고려사항
+> - 일반적으로 Scan작업은 DynamoDB 다른작업보다 비효율적. 
+> - Scan작업은 항상 전체 테이블이나 보조 인덱스를 스캔함. 그런 후 값을 필터링하여 원하는 결과를 얻기 때문에 결과 세트에서 데이터를 제거해야하는 단계가 추가됨.
+> - 응답시간을 빠르게 하기위해서 Scan이 아닌, Query를 사용하도록 테이블과 인덱스르 설계해야함. (테이블의 경우 GetItem 및 BatchGetItem API사용도 고려)
+> - 그밖에도 Scan작업이 요청에 미치는 영향을 최소화 하도록 해야할 것.
+
+```
 
 ### 재활용
 ```
@@ -806,6 +944,7 @@ fragment ItemTestPost on TestPost {
 - [권한부여 사용사례](https://docs.aws.amazon.com/ko_kr/appsync/latest/devguide/security-authorization-use-cases.html)
 - [파이프라인 이해](https://medium.com/@dabit3/intro-to-aws-appsync-pipeline-functions-3df87ceddac1)
 - [해석기 매핑 템플릿 컨텍스트 참조](https://docs.aws.amazon.com/ko_kr/appsync/latest/devguide/resolver-context-reference.html#dynamodb-helpers-in-util-dynamodb)
+- [해석기 매핑 템플릿 유틸리티 참조](https://docs.aws.amazon.com/ko_kr/appsync/latest/devguide/resolver-util-reference.html)
 - [DynamoDB 해석기 자습서](https://docs.aws.amazon.com/ko_kr/appsync/latest/devguide/tutorial-dynamodb-resolvers.html)
 - [DynamoDB 해석기 자습서2](https://docs.aws.amazon.com/ko_kr/appsync/latest/devguide/resolver-mapping-template-reference-dynamodb.html#aws-appsync-resolver-mapping-template-reference-dynamodb-condition-expressions)
 - [AppSync이해](https://dev.classmethod.jp/articles/appsync-resolver-vtl-tutorial-ko/)
