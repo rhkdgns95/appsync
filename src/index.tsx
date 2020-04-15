@@ -5,7 +5,6 @@ import * as serviceWorker from './serviceWorker';
 import AWSAppSyncClient, { AUTH_TYPE } from 'aws-appsync'
 import AppSyncConfig from './aws-exports'
 import { ApolloProvider } from 'react-apollo'
-import { Rehydrated } from 'aws-appsync-react';
 import Amplify, { Auth } from 'aws-amplify';
 // import Rehydrated from './Rehydrated';
 
@@ -31,9 +30,7 @@ const client = new AWSAppSyncClient({
 
 ReactDOM.render(
   <ApolloProvider client={client}>
-    <Rehydrated>
       <App />
-    </Rehydrated>
   </ApolloProvider>,
   document.getElementById('root')
 );

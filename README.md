@@ -672,7 +672,7 @@
     #end
   }
 ```
-- 11. allTestPostsByTags
+11. allTestPostsByTags
 > - 필터링 옵션: contains(필드명, 필드값)
 ```
   ## 요청 맵핑
@@ -701,7 +701,7 @@
     #end
   }
 ```
-- 12. addTag
+12. addTag
 > - testPost에 `tags: [String!]` 항목 추가.
 > - arguments: id, tag값
 ```
@@ -723,7 +723,7 @@
   ## Response
   $util.toJson($ctx.result)
 ```
-- 13. removeTag
+13. removeTag
 ```
   ## Request
   {
@@ -741,8 +741,87 @@
   ## Response
   $util.toJson($ctx.result)
 ```
-- 14. 목록 및 맵 사용.
-
+14. 목록 및 맵 사용.
+```
+  ## 맵 사용(Map)
+  {
+    "version" : "2017-02-28",
+      "operation": "PutItem",
+      "key" : {
+        "id" : $util.dynamodb.toDynamoDBJson($util.autoId())
+      },
+      "attributeValues" : {
+        "manager" : {
+            "M" : {
+                "id" : { "S" : "${ctx.identity.sub}" },
+                  "name" : { "S" : "${ctx.identity.username}" }
+              }
+          }
+          #if( $ctx.args.limitUserCnt )
+            ,"limitUserCnt" : { "N" : $ctx.args.limitUserCnt }
+          #end
+      }
+  }
+```
+15. 맵 형식의 필드값에 대한 조건문 - (1)
+> - Map필드의 전체가 같아야 함.
+```
+  {
+    "operation" : "Scan",
+    "filter" : {
+      "expression" : "#manager = :manager",
+        "expressionNames" : {
+          "#manager" : "manager"
+          ## "#managerId" : "manager.id"
+        },
+        "expressionValues" : {
+          ":manager" : {
+              "M" : {
+                  "id" : { "S" : "${ctx.identity.sub}" },
+                  "name" : { "S" : "${ctx.identity.username}" }
+                }
+            }
+        ## 참고 https://forums.aws.amazon.com/thread.jspa?messageID=584236&tstart=0
+            ## 필드가 Map 타입인경우, Map의 필드값으로 검색하는 방법으로 contains를 사용해야함.
+            ##(Map의 단일필드 값은 작동되지 않으며, 전체 필드값으로 검색해야함) 
+          ## ":managerId" : { "S" : "${ctx.identity.sub}" }
+          ## ":managerId" : $util.dynamodb.toDynamoDBJson($ctx.identity.sub)
+            
+        }
+    }
+    ## Add 'limit' and 'nextToken' arguments to this field in your schema to implement pagination. **
+    ## "limit": $util.defaultIfNull(${ctx.args.limit}, 20),
+    ## "nextToken": $util.toJson($util.defaultIfNullOrBlank($ctx.args.nextToken, null))
+  }
+```
+16. 맵 형식의 필드값에 대한 조건문 - (2)
+> - 데이터의 필드값이 맵인경우, 특정 속성값에 대한 조건
+> - [참고](https://github.com/awslabs/dynamodb-document-js-sdk/issues/43)
+```
+  {
+    "version" : "2017-02-28",
+    "operation" : "Scan",
+    "filter" : {
+      "expression" : "#manager.#id = :managerId",
+      "expressionNames" : {
+          "#manager" : "manager",
+          "#id" : "id"
+      },
+      "expressionValues" : {
+        ":managerId" : {
+            "S" : "${ctx.identity.sub}"
+        }
+      }
+    }
+  }
+```
+17. 맵 형식의 데이터 업데이트.
+> - 생성될 때는 단순히 AttributeValues에 추가하면 되지만, 업데이트에서는 list_append()를 사용하도록 함
+```
+  {
+    
+  }
+```
 
 
 ## N. Amplify CLI [문서](https://aws-amplify.github.io/docs/cli-toolchain/quickstart?sdk=js)
@@ -891,14 +970,21 @@
   ## After
   $!{myMap.put("id", "first value")} ## 방법 1
   $util.qr($myMap.put("id", "first value")) ## 방법 2
-
+```
 - (Scan)스캔에 대한 고려사항
 > - 일반적으로 Scan작업은 DynamoDB 다른작업보다 비효율적. 
 > - Scan작업은 항상 전체 테이블이나 보조 인덱스를 스캔함. 그런 후 값을 필터링하여 원하는 결과를 얻기 때문에 결과 세트에서 데이터를 제거해야하는 단계가 추가됨.
 > - 응답시간을 빠르게 하기위해서 Scan이 아닌, Query를 사용하도록 테이블과 인덱스르 설계해야함. (테이블의 경우 GetItem 및 BatchGetItem API사용도 고려)
 > - 그밖에도 Scan작업이 요청에 미치는 영향을 최소화 하도록 해야할 것.
+- 시간 TimeStamp로 표현
+> - $util.nowEpochMilliSeconds() 
+> - 이외에도 $util을 객체를 활용해서 다양한 시간표현이 가능함.
+- 조건문 false로 간주되는 경우
+> - Boolean.FALSE 및 null만 조건문에서 false로 간주됨.
+> - 제로(0)와 빈 문자열("")은 false로 간주되지 않음.
+- Array의 사용
+> - .isEmpty() .size() .set() .get() .add()와 같은 기본 메소드를 사용할 수 있음.
 
-```
 
 ### 재활용
 ```
