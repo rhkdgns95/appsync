@@ -18,7 +18,7 @@
     "aws-appsync": "^3.0.2",
     "aws-appsync-react": "^3.0.2",
     "formik": "^2.1.4",
-    "immer": "^6.0.2",
+    "immer": "^8.0.1",
     "react": "^16.13.1",
     "react-apollo": "2.5.8",
     "react-dom": "^16.13.1",
